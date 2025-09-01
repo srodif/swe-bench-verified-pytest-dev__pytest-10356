@@ -1,0 +1,1 @@
+Markers from multiple base classes are now properly collected when using multiple inheritance. Previously, only markers from the first base class in the MRO were collected due to Python's attribute lookup behavior.
