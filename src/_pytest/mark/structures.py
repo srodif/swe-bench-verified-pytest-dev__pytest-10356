@@ -357,10 +357,36 @@ class MarkDecorator:
 
 def get_unpacked_marks(obj: object) -> Iterable[Mark]:
     """Obtain the unpacked marks that are stored on an object."""
-    mark_list = getattr(obj, "pytestmark", [])
-    if not isinstance(mark_list, list):
-        mark_list = [mark_list]
-    return normalize_mark_list(mark_list)
+    import inspect
+    
+    if inspect.isclass(obj):
+        # For classes, collect marks from entire MRO to handle multiple inheritance
+        all_marks = []
+        
+        # Collect marks from each class in MRO that has pytestmark directly defined
+        for cls in obj.__mro__:
+            if "pytestmark" in cls.__dict__:
+                # Get the marks stored directly on this class
+                mark_list = cls.__dict__["pytestmark"]
+                if not isinstance(mark_list, list):
+                    mark_list = [mark_list]
+                
+                # Only add marks that haven't been seen yet to avoid duplicates from inheritance
+                for mark_obj in normalize_mark_list(mark_list):
+                    # Check if we already have this mark (by name and args/kwargs)
+                    if not any(existing.name == mark_obj.name and 
+                              existing.args == mark_obj.args and 
+                              existing.kwargs == mark_obj.kwargs 
+                              for existing in all_marks):
+                        all_marks.append(mark_obj)
+        
+        return all_marks
+    else:
+        # For non-classes, use the original behavior
+        mark_list = getattr(obj, "pytestmark", [])
+        if not isinstance(mark_list, list):
+            mark_list = [mark_list]
+        return normalize_mark_list(mark_list)
 
 
 def normalize_mark_list(

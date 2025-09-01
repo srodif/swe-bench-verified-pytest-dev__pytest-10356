@@ -561,6 +561,35 @@ class TestFunctional:
         items, rec = pytester.inline_genitems(p)
         self.assert_markers(items, test_foo=("a", "b", "c"), test_bar=("a", "b", "d"))
 
+    def test_mark_decorator_multiple_inheritance(self, pytester: Pytester) -> None:
+        """Test that marks from multiple base classes are collected (MRO)."""
+        p = pytester.makepyfile(
+            """
+            import pytest
+
+            @pytest.mark.foo
+            class Foo(object):
+                pass
+
+            @pytest.mark.bar
+            class Bar(object):
+                pass
+
+            class TestMultiple(Foo, Bar):
+                def test_dings(self):
+                    pass
+
+            class TestTriple(Foo, Bar):
+                @pytest.mark.baz
+                def test_more(self):
+                    pass
+        """
+        )
+        items, rec = pytester.inline_genitems(p)
+        # TestMultiple should have both foo and bar markers
+        # TestTriple.test_more should have foo, bar, and baz markers
+        self.assert_markers(items, test_dings=("foo", "bar"), test_more=("foo", "bar", "baz"))
+
     def test_mark_closest(self, pytester: Pytester) -> None:
         p = pytester.makepyfile(
             """
